@@ -262,18 +262,10 @@ export default function Home() {
     <div
       className={`app-root ${theme === "light" ? "light-theme" : "dark-theme"}`}
     >
-      {notification && (
-        <Notification
-          message={notification.message}
-          type={notification.type === "error" ? "error" : "info"}
-          onClose={() => setNotification(null)}
-        />
-      )}
-
       <div className="app-frame">
         <div className="header">
           <div className="brand">
-            <h1>SkyCast</h1>
+            <h1>Weather Application</h1>
           </div>
 
           <div className="header-center">
@@ -359,9 +351,31 @@ export default function Home() {
                   </div>
 
                   <div className="current-right">
-                    {/* big stylized icon (simple) */}
+                    {/* big stylized icon (dynamic for rain) */}
                     <div style={{ fontSize: 48 }}>
-                      {/* dynamic icon by temp/humidity could be added */}☀️
+                      {(() => {
+                        // Show rain icon if humidity is high or if precipitation is detected
+                        // You can refine this logic as needed
+                        const isRainy = (() => {
+                          // Check for high humidity or recent rain in forecast
+                          if (
+                            weather.humidity !== undefined &&
+                            weather.humidity !== null &&
+                            weather.humidity > 80
+                          )
+                            return true;
+                          // Check for rain in daily forecast (today)
+                          if (
+                            daily &&
+                            daily.length > 0 &&
+                            daily[0].precipitation &&
+                            daily[0].precipitation > 0
+                          )
+                            return true;
+                          return false;
+                        })();
+                        return isRainy ? "🌧️" : "☀️";
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -387,29 +401,32 @@ export default function Home() {
 
                 {/* Hourly */}
                 {forecastType === "hourly" && hourly.length > 0 && (
-                  <div className="hourly-scroll" aria-hidden={false}>
-                    {hourly.slice(0, 16).map((h, i) => (
-                      <div className="hour-card" key={i}>
-                        <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                          {new Date(h.time).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        <div style={{ marginTop: 6, fontWeight: 700 }}>
-                          {displayTemp(h.tempC)}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "var(--muted)",
-                            marginTop: 6,
-                          }}
-                        >
-                          {h.humidity ?? "-"}%
-                        </div>
-                      </div>
-                    ))}
+                  <div className="hourly-vertical" aria-hidden={false}>
+                    <table style={{ width: "100%" }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: "left" }}>Time</th>
+                          <th style={{ textAlign: "left" }}>Temp</th>
+                          <th style={{ textAlign: "left" }}>Humidity</th>
+                          <th style={{ textAlign: "left" }}>Wind</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {hourly.slice(0, 24).map((h, i) => (
+                          <tr key={i}>
+                            <td>
+                              {new Date(h.time).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </td>
+                            <td>{displayTemp(h.tempC)}</td>
+                            <td>{h.humidity ?? "-"}</td>
+                            <td>{h.wind ?? "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
 
@@ -456,9 +473,7 @@ export default function Home() {
               <div key={idx} className="saved-card">
                 <div>
                   <div className="city-small">{h.city}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                    {h.country}
-                  </div>
+                  <div className="country-small">{h.country}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div className="temp-small">
@@ -471,8 +486,16 @@ export default function Home() {
               </div>
             ))}
 
-            {/* Weather alert placeholder */}
-            <div className="alert-box">Weather alerts will appear here</div>
+            {/* Weather alert box: show notification or placeholder */}
+            <div
+              className={`alert-box${
+                notification && notification.type === "error" ? " error" : ""
+              }`}
+            >
+              {notification
+                ? notification.message
+                : "Weather alerts will appear here"}
+            </div>
 
             {/* History component (compact) */}
             <div style={{ marginTop: 12 }}>
