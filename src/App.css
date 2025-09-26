@@ -1,75 +1,332 @@
-/* Theme backgrounds */
+/* =========================
+   App.css - SkyCast styles
+   Replace your entire App.css with this
+========================= */
+
+/* Font fallback - ensure Inter/Roboto available in your project for best match */
+:root{
+  --accent: #0ea5e9;
+  --card-bg-light: rgba(255,255,255,0.95);
+  --card-bg-dark: rgba(17,24,39,0.85);
+  --glass: rgba(255,255,255,0.3);
+  --muted: #64748b;
+  --radius-lg: 1rem;
+}
+
+/* Global layout */
+* { box-sizing: border-box; }
+html,body,#root { height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Inter', 'Roboto', system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* App container (Home root uses X-theme class) */
+.app-root {
+  min-height: 100vh;
+  padding: 1.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+/* Theme backgrounds (applied to a wrapper div) */
 .light-theme {
-  background: #fff;
-  color: #111;
+  background: linear-gradient(135deg, #e9f7ff 0%, #f6fcff 100%);
+  color: #0f172a;
 }
+
 .dark-theme {
-  background: #111827;
-  color: #fff;
+  background: linear-gradient(135deg, #071425 0%, #0f2a36 60%);
+  color: #e6eef6;
 }
-/* Theme toggles */
-.theme-toggle,
-.unit-toggle {
+
+/* A centered app card with padding to mimic the mockup border radius */
+.app-frame {
+  width: 100%;
+  max-width: 1200px;
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0.15));
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px rgba(2,6,23,0.12);
+}
+
+/* Header row */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.5rem 0.25rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.brand h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+  color: inherit;
+}
+
+/* Search bar placed center */
+.header-center {
+  flex: 1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* SearchBar styling */
+.search-bar {
+  display:flex;
+  gap:0.5rem;
+  align-items:center;
+  width: 100%;
+  max-width: 640px;
+}
+.search-input {
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background: var(--card-bg-light);
+  border-radius: 999px;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 6px 18px rgba(6, 24, 46, 0.06);
+  border: 1px solid rgba(15,23,42,0.04);
+}
+.light-theme .search-input { background: rgba(255,255,255,0.9); }
+.dark-theme .search-input { background: rgba(7,12,20,0.6); border: 1px solid rgba(255,255,255,0.04); }
+.search-input input {
   border: none;
   outline: none;
-  padding: 0.5rem 1rem;
-  margin: 0 0.25rem;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  background: transparent;
+  font-size: 0.95rem;
+  padding: 0.35rem 0.5rem;
+  color: inherit;
+  width: 100%;
 }
-.theme-toggle.active,
-.unit-toggle.active {
-  background: #2563eb;
+.search-btn {
+  background: var(--accent);
   color: #fff;
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(14,165,233,0.18);
+  transition: transform .12s ease;
 }
-.theme-toggle.inactive,
-.unit-toggle.inactive {
-  background: #e5e7eb;
-  color: #222;
+.search-btn:hover { transform: translateY(-2px); }
+
+/* Right controls (theme + units) */
+.controls {
+  display:flex;
+  gap:0.5rem;
+  align-items:center;
 }
 
-/* Offline banner */
-.offline-banner {
-  background: #fde68a;
-  color: #92400e;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  margin-bottom: 1rem;
-  text-align: center;
-  font-weight: 500;
+/* Toggle buttons style */
+.toggle-pill {
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  border: none;
+  cursor: pointer;
+  font-weight:600;
+  background: rgba(255,255,255,0.4);
+  color: #0f172a;
+  transition: background .12s ease, color .12s ease, transform .12s;
+}
+.dark-theme .toggle-pill { background: rgba(255,255,255,0.06); color: inherit; }
+.toggle-pill.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 8px 22px rgba(14,165,233,0.2);
 }
 
-/* Notification popup */
+/* Layout: main + sidebar */
+.layout {
+  display:grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Left column card - main weather + forecast */
+.main-card {
+  background: var(--card-bg-light);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.08);
+}
+.dark-theme .main-card {
+  background: var(--card-bg-dark);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+/* Current weather area */
+.current-row {
+  display:flex;
+  gap:1rem;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+.current-left {
+  flex: 1 1 320px;
+}
+.current-right {
+  width:160px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* Big temp */
+.city {
+  font-weight:700;
+  font-size:1.2rem;
+  margin:0 0 0.25rem 0;
+}
+.big-temp {
+  font-size:4rem;
+  font-weight:800;
+  color: var(--accent);
+  margin:0;
+}
+.kv {
+  display:flex;
+  gap:0.75rem;
+  margin-top:0.6rem;
+  color:var(--muted);
+  align-items:center;
+}
+.kv div { display:flex; gap:0.35rem; align-items:center; font-size:0.95rem; }
+
+/* Forecast tabs */
+.tabs {
+  display:flex;
+  gap:0.5rem;
+  margin-top:1rem;
+}
+.tab {
+  padding:0.45rem 0.9rem;
+  border-radius: 999px;
+  font-weight:600;
+  cursor:pointer;
+  background: rgba(255,255,255,0.6);
+}
+.dark-theme .tab { background: rgba(255,255,255,0.03); }
+.tab.active { background: var(--accent); color: white; box-shadow: 0 8px 22px rgba(14,165,233,0.12); }
+
+/* Hourly scroll cards */
+.hourly-scroll {
+  display:flex;
+  gap:0.75rem;
+  margin-top:1rem;
+  overflow-x:auto;
+  padding-bottom:8px;
+}
+.hour-card {
+  min-width:86px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 12px;
+  padding:0.6rem;
+  text-align:center;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.05);
+}
+.dark-theme .hour-card { background: rgba(255,255,255,0.04); }
+
+/* Daily table */
+.forecast-table {
+  width:100%;
+  margin-top:1rem;
+  border-radius:12px;
+  overflow:hidden;
+}
+.forecast-table table {
+  width:100%;
+  border-collapse:collapse;
+}
+.forecast-table th, .forecast-table td {
+  padding: 0.55rem 0.75rem;
+  text-align:left;
+  border-bottom: 1px solid rgba(15,23,42,0.04);
+}
+.dark-theme .forecast-table th, .dark-theme .forecast-table td {
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+/* Sidebar saved locations */
+.sidebar {
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  gap:0.75rem;
+}
+.saved-card {
+  background: rgba(255,255,255,0.9);
+  border-radius: 12px;
+  padding:0.75rem;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.04);
+}
+.dark-theme .saved-card { background: rgba(255,255,255,0.03); }
+.saved-card .city-small { font-weight:700; }
+.saved-card .temp-small { font-size:1.35rem; color:var(--accent); }
+
+/* Weather alert */
+.alert-box {
+  border-radius: 10px;
+  padding: 0.6rem;
+  font-weight:600;
+  background: rgba(255,255,255,0.85);
+  color:#b91c1c;
+  margin-top:0.6rem;
+}
+.dark-theme .alert-box { background: rgba(255,255,255,0.04); color:#fca5a5; }
+
+/* Notification toast */
 .notification {
   position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  min-width: 220px;
-  background: #2563eb;
+  top: 1.2rem;
+  right: 1.2rem;
+  background: var(--accent);
   color: #fff;
-  padding: 1rem 1.5rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  z-index: 1000;
-  opacity: 0.95;
-  font-size: 1rem;
-  animation: fadeIn 0.3s;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 26px rgba(2,6,23,0.12);
+  font-weight:600;
+  z-index:1200;
 }
-.notification.error {
-  background: #dc2626;
+.notification.error { background: #dc2626; }
+
+/* History list */
+.history {
+  margin-top: 1rem;
 }
-.notification.success {
-  background: #16a34a;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 0.95;
-    transform: translateY(0);
-  }
+.history li { list-style:none; padding:0.35rem 0; cursor:pointer; color:var(--muted); }
+.history li:hover { text-decoration:underline; color:inherit; }
+
+/* Utilities & responsive */
+.center { text-align:center; }
+.hidden { display:none; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { order: 2; }
+  .main-card { order: 1; }
+  .app-frame { padding: 0.9rem; }
+  .big-temp { font-size: 3rem; }
+  .search-bar { max-width: 520px; }
 }

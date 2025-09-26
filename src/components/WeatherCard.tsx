@@ -1,34 +1,41 @@
+// src/components/WeatherCard.tsx
 import React from "react";
 
-type WeatherCardProps = {
+type Weather = {
   city: string;
-  country: string;
-  temperature: number;
-  windspeed?: number;
-  humidity?: number;
+  country?: string;
+  tempC: number;
+  wind?: number;
+  humidity?: number | null;
 };
 
-const WeatherCard: React.FC<WeatherCardProps> = ({
-  city,
-  country,
-  temperature,
-  windspeed,
-  humidity,
-}) => {
+export default function WeatherCard({
+  weather,
+  unit = "celsius",
+}: {
+  weather: Weather;
+  unit?: "celsius" | "fahrenheit";
+}) {
+  const cToF = (c: number) => Math.round((c * 9) / 5 + 32);
+  if (!weather) return null;
+  const displayTemp =
+    unit === "celsius" ? `${weather.tempC}°C` : `${cToF(weather.tempC)}°F`;
+
   return (
-    <div className="p-4 border rounded shadow max-w-sm bg-white">
-      <h2 className="text-xl font-semibold">
-        {city}, {country}
+    <div className="weather-card" style={{ maxWidth: 720 }}>
+      <h2 style={{ margin: 0 }}>
+        {weather.city}
+        {weather.country ? `, ${weather.country}` : ""}
       </h2>
-      <p className="text-2xl mt-2">{temperature}°C</p>
-      {humidity !== undefined && humidity !== null && (
-        <p className="mt-1">Humidity: {humidity}%</p>
+      <p className="temp" style={{ marginTop: 6, marginBottom: 10 }}>
+        {displayTemp}
+      </p>
+      {weather.humidity !== undefined && weather.humidity !== null && (
+        <p style={{ margin: 0 }}>💧 Humidity: {weather.humidity}%</p>
       )}
-      {windspeed !== undefined && (
-        <p className="mt-1">Wind: {windspeed} km/h</p>
+      {weather.wind !== undefined && (
+        <p style={{ marginTop: 6 }}>🌬 Wind: {weather.wind} km/h</p>
       )}
     </div>
   );
-};
-
-export default WeatherCard;
+}

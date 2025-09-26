@@ -1,310 +1,494 @@
-import { useState, useEffect } from "react";
+// src/pages/Home.tsx
+import React, { useEffect, useState } from "react";
 import SearchBar from "../components/SearchBar";
 import WeatherCard from "../components/WeatherCard";
 import HistoryList from "../components/HistoryList";
 
+/* Notification component */
+function Notification({
+  message,
+  type = "info",
+  onClose,
+}: {
+  message: string;
+  type?: "success" | "error" | "info";
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3200);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div className={`notification ${type === "error" ? "error" : ""}`}>
+      {message}
+    </div>
+  );
+}
+
+/* ---- helper conversions ---- */
+const cToF = (c: number) => Math.round((c * 9) / 5 + 32);
+const fToC = (f: number) => Math.round(((f - 32) * 5) / 9);
+const round = (n: number) => Math.round(n);
+
+/* ---- Types ---- */
+type HistoryItem = {
+  city: string;
+  country?: string;
+  tempC: number; // stored in Celsius
+  wind?: number;
+  humidity?: number | null;
+  ts?: number;
+};
+
 export default function Home() {
-  const [weather, setWeather] = useState<any>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type?: "success" | "error" | "info";
+  } | null>(null);
+  const [weather, setWeather] = useState<HistoryItem | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [forecastType, setForecastType] = useState<"hourly" | "daily">("daily");
-  const [forecast, setForecast] = useState<any[]>([]);
+  const [hourly, setHourly] = useState<any[]>([]);
+  const [daily, setDaily] = useState<any[]>([]);
   const [unit, setUnit] = useState<"celsius" | "fahrenheit">("celsius");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
-  // Load stored history, try geolocation, and handle online/offline
+  /* Load history and geolocation on mount */
   useEffect(() => {
     const stored = localStorage.getItem("weather-history");
     if (stored) setHistory(JSON.parse(stored));
 
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
 
-    if (navigator.geolocation && navigator.onLine) {
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setLoading(true);
-        setError(null);
-        try {
-          // Reverse geocode to get city/country
-          const geoRes = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=en&format=json`
-          );
-          const geoData = await geoRes.json();
-          const loc = geoData.results?.[0];
-          if (!loc) throw new Error("Could not determine your city");
-
-          const weatherRes = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=${unit}&windspeed_unit=kmh&hourly=relative_humidity_2m`
-          );
-          const w = await weatherRes.json();
-          if (!w.current_weather) throw new Error("No weather data");
-          // Find humidity for current hour
-          let humidity = null;
-          if (w.hourly && w.hourly.time && w.hourly.relative_humidity_2m) {
-            const now = w.current_weather.time;
-            const idx = w.hourly.time.indexOf(now);
-            if (idx !== -1) humidity = w.hourly.relative_humidity_2m[idx];
+    // Try geolocation (non-blocking)
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          // reverse geocode for readable name
+          try {
+            const geoRes = await fetch(
+              `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=en&format=json`
+            );
+            const geo = await geoRes.json();
+            const loc = geo.results?.[0];
+            const name = loc?.name ?? "Your location";
+            const country = loc?.country ?? "";
+            await fetchWeatherByCoords(latitude, longitude, name, country);
+          } catch (e) {
+            // ignore; user can search manually
           }
-          const entry = {
-            city: loc.name,
-            country: loc.country,
-            temperature: w.current_weather.temperature,
-            windspeed: w.current_weather.windspeed,
-            humidity,
-          };
-          setWeather(entry);
-          saveHistory(entry);
-        } catch (e: any) {
-          setError(e.message || "Error fetching weather");
-        } finally {
-          setLoading(false);
-        }
-      });
+        },
+        () => {
+          // denied or failed; no-op
+        },
+        { timeout: 7000 }
+      );
     }
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, [unit]);
 
-  const saveHistory = (entry: any) => {
-    const updated = [entry, ...history].slice(0, 10);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* Save history helper */
+  const saveHistory = (entry: HistoryItem) => {
+    const updated = [
+      entry,
+      ...history.filter(
+        (h) => !(h.city === entry.city && h.country === entry.country)
+      ),
+    ].slice(0, 10);
     setHistory(updated);
     localStorage.setItem("weather-history", JSON.stringify(updated));
   };
 
-  const handleSearch = async (city: string) => {
+  /* Core fetch function (always request celsius and convert client-side) */
+  const fetchWeatherByCoords = async (
+    latitude: number,
+    longitude: number,
+    name = "Unknown",
+    country = ""
+  ) => {
     setLoading(true);
-    setError(null);
-    setWeather(null);
-    setForecast([]);
     try {
-      if (!isOnline) {
-        setError("You are offline. Only cached data is available.");
-        setLoading(false);
-        return;
-      }
-      const geoRes = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-          city
-        )}&count=1&language=en&format=json`
-      );
-      const geoData = await geoRes.json();
-      if (!geoData.results || geoData.results.length === 0)
-        throw new Error("City not found");
-      const { latitude, longitude, name, country } = geoData.results[0];
+      if (!isOnline) throw new Error("Offline: can't fetch live data");
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=celsius&windspeed_unit=kmh&hourly=temperature_2m,relative_humidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto`;
+      const res = await fetch(url);
+      const w = await res.json();
+      if (!w.current_weather) throw new Error("No weather data returned");
 
-      // Fetch both hourly and daily forecast
-      const weatherRes = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=${unit}&windspeed_unit=kmh&hourly=temperature_2m,relative_humidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto`
-      );
-      const w = await weatherRes.json();
-      if (!w.current_weather) throw new Error("No weather data");
-      // Find humidity for current hour (fallback to closest hour if needed)
-      let humidity = null;
+      // get humidity for the current hour if available
+      let humidity: number | null = null;
       if (w.hourly && w.hourly.time && w.hourly.relative_humidity_2m) {
         const now = w.current_weather.time;
         let idx = w.hourly.time.indexOf(now);
         if (idx === -1) {
-          // Fallback: find closest hour
-          const nowDate = new Date(now);
-          let minDiff = Infinity;
+          const nowDate = new Date(now).getTime();
+          let best = 0;
+          let bestDiff = Infinity;
           w.hourly.time.forEach((t: string, i: number) => {
-            const diff = Math.abs(new Date(t).getTime() - nowDate.getTime());
-            if (diff < minDiff) {
-              minDiff = diff;
-              idx = i;
+            const diff = Math.abs(new Date(t).getTime() - nowDate);
+            if (diff < bestDiff) {
+              bestDiff = diff;
+              best = i;
             }
           });
+          idx = best;
         }
-        if (idx !== -1) humidity = w.hourly.relative_humidity_2m[idx];
+        humidity = w.hourly.relative_humidity_2m[idx];
       }
-      const entry = {
+
+      const entry: HistoryItem = {
         city: name,
         country,
-        temperature: w.current_weather.temperature,
-        windspeed: w.current_weather.windspeed,
+        tempC: round(w.current_weather.temperature),
+        wind: round(w.current_weather.windspeed),
         humidity,
+        ts: Date.now(),
       };
-      setWeather(entry);
-      saveHistory(entry);
 
-      // Prepare forecast data
-      if (forecastType === "hourly" && w.hourly) {
-        setForecast(
-          w.hourly.time.map((t: string, i: number) => ({
+      // build forecasts in Celsius (store internal as Celsius)
+      const hourlyArr: any[] = [];
+      if (w.hourly && w.hourly.time) {
+        hourlyArr.push(
+          ...w.hourly.time.map((t: string, i: number) => ({
             time: t,
-            temperature: w.hourly.temperature_2m[i],
-            humidity: w.hourly.relative_humidity_2m[i],
-            windspeed: w.hourly.windspeed_10m[i],
-          }))
-        );
-      } else if (forecastType === "daily" && w.daily) {
-        setForecast(
-          w.daily.time.map((t: string, i: number) => ({
-            date: t,
-            tempMax: w.daily.temperature_2m_max[i],
-            tempMin: w.daily.temperature_2m_min[i],
-            precipitation: w.daily.precipitation_sum[i],
-            weathercode: w.daily.weathercode[i],
+            tempC:
+              typeof w.hourly.temperature_2m[i] === "number"
+                ? round(w.hourly.temperature_2m[i])
+                : null,
+            humidity: w.hourly.relative_humidity_2m?.[i] ?? null,
+            wind: w.hourly.windspeed_10m?.[i] ?? null,
           }))
         );
       }
+      const dailyArr: any[] = [];
+      if (w.daily && w.daily.time) {
+        dailyArr.push(
+          ...w.daily.time.map((t: string, i: number) => ({
+            date: t,
+            maxC: w.daily.temperature_2m_max?.[i] ?? null,
+            minC: w.daily.temperature_2m_min?.[i] ?? null,
+            precipitation: w.daily.precipitation_sum?.[i] ?? null,
+            weathercode: w.daily.weathercode?.[i] ?? null,
+          }))
+        );
+      }
+
+      setWeather(entry);
+      setHourly(hourlyArr);
+      setDaily(dailyArr);
+      saveHistory(entry);
+      setNotification({
+        message: `Weather for ${name} loaded`,
+        type: "success",
+      });
     } catch (e: any) {
-      setError(e.message || "Error fetching weather");
+      setNotification({
+        message: e.message || "Error fetching weather",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  /* Search handler (geocode then fetch) */
+  const handleSearch = async (query: string) => {
+    if (!query || query.trim().length === 0) return;
+    setLoading(true);
+    try {
+      if (!isOnline)
+        throw new Error("You are offline. Only cached data available.");
+      const geoRes = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
+          query
+        )}&count=1&language=en&format=json`
+      );
+      const geo = await geoRes.json();
+      const loc = geo.results?.[0];
+      if (!loc) throw new Error("City not found");
+      await fetchWeatherByCoords(
+        loc.latitude,
+        loc.longitude,
+        loc.name,
+        loc.country
+      );
+    } catch (e: any) {
+      setNotification({ message: e.message || "Search failed", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* Unit change - we keep stored data in Celsius, we simply switch the UI rendering */
+  const toggleUnit = (u: "celsius" | "fahrenheit") => {
+    setUnit(u);
+    setNotification({
+      message: `Units: ${u === "celsius" ? "°C" : "°F"}`,
+      type: "info",
+    });
+  };
+
+  /* Theme toggle */
+  const toggleTheme = (t: "light" | "dark") => {
+    setTheme(t);
+    setNotification({
+      message: `${t === "light" ? "Light" : "Dark"} theme enabled`,
+      type: "info",
+    });
+  };
+
+  /* Helpers for display */
+  const displayTemp = (tempC: number | null | undefined) => {
+    if (tempC === null || tempC === undefined) return "-";
+    return unit === "celsius" ? `${tempC}°C` : `${cToF(tempC)}°F`;
+  };
+
+  /* When user selects a past history item (city name), trigger search again */
+  const handleSelectHistory = (city: string) => {
+    handleSearch(city);
+  };
+
   return (
-    <div className={`p-4 min-h-screen ${theme}-theme`}>
-      <div className="flex flex-wrap gap-2 mb-4 items-center justify-between">
-        <h1 className="text-2xl font-bold">Weather App</h1>
-        <div className="flex gap-2">
-          <button
-            className={`theme-toggle ${
-              theme === "light" ? "active" : "inactive"
-            }`}
-            onClick={() => setTheme("light")}
-          >
-            Light
-          </button>
-          <button
-            className={`theme-toggle ${
-              theme === "dark" ? "active" : "inactive"
-            }`}
-            onClick={() => setTheme("dark")}
-          >
-            Dark
-          </button>
-        </div>
-        <div className="flex gap-2">
-          <button
-            className={`unit-toggle ${
-              unit === "celsius" ? "active" : "inactive"
-            }`}
-            onClick={() => setUnit("celsius")}
-          >
-            °C
-          </button>
-          <button
-            className={`unit-toggle ${
-              unit === "fahrenheit" ? "active" : "inactive"
-            }`}
-            onClick={() => setUnit("fahrenheit")}
-          >
-            °F
-          </button>
-        </div>
-      </div>
-      <div className="mb-4 flex gap-2">
-        <button
-          className={`px-3 py-1 rounded ${
-            forecastType === "daily" ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
-          onClick={() => setForecastType("daily")}
-        >
-          Daily
-        </button>
-        <button
-          className={`px-3 py-1 rounded ${
-            forecastType === "hourly" ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
-          onClick={() => setForecastType("hourly")}
-        >
-          Hourly
-        </button>
-      </div>
-      {!isOnline && (
-        <div className="mb-2 p-2 bg-yellow-200 text-yellow-900 rounded">
-          You are offline. Only cached data is available.
-        </div>
+    <div
+      className={`app-root ${theme === "light" ? "light-theme" : "dark-theme"}`}
+    >
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type === "error" ? "error" : "info"}
+          onClose={() => setNotification(null)}
+        />
       )}
-      <SearchBar onSearch={handleSearch} />
-      {loading && <p>Loading…</p>}
-      {error && <p className="text-red-600">{error}</p>}
-      {weather && (
-        <div className="mt-4">
-          <WeatherCard {...weather} />
-        </div>
-      )}
-      {/* Forecast display */}
-      {forecastType === "hourly" && forecast.length > 0 && (
-        <div className="mt-6">
-          <h3 className="font-semibold mb-2">Hourly Forecast</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-max text-sm">
-              <thead>
-                <tr>
-                  <th className="px-2">Time</th>
-                  <th className="px-2">
-                    Temp ({unit === "celsius" ? "°C" : "°F"})
-                  </th>
-                  <th className="px-2">Humidity (%)</th>
-                  <th className="px-2">Wind (km/h)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {forecast.map((h, i) => (
-                  <tr key={i}>
-                    <td className="px-2 whitespace-nowrap">
-                      {h.time.slice(11, 16)}
-                    </td>
-                    <td className="px-2">{h.temperature}</td>
-                    <td className="px-2">{h.humidity}</td>
-                    <td className="px-2">{h.windspeed}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+      <div className="app-frame">
+        <div className="header">
+          <div className="brand">
+            <h1>SkyCast</h1>
+          </div>
+
+          <div className="header-center">
+            <div style={{ width: "100%" }}>
+              <SearchBar onSearch={handleSearch} />
+            </div>
+          </div>
+
+          <div className="controls">
+            <button
+              className={`toggle-pill ${theme === "light" ? "active" : ""}`}
+              onClick={() => toggleTheme("light")}
+              aria-label="Light theme"
+            >
+              Light
+            </button>
+            <button
+              className={`toggle-pill ${theme === "dark" ? "active" : ""}`}
+              onClick={() => toggleTheme("dark")}
+              aria-label="Dark theme"
+            >
+              Dark
+            </button>
+
+            <button
+              className={`toggle-pill ${unit === "celsius" ? "active" : ""}`}
+              onClick={() => toggleUnit("celsius")}
+            >
+              °C
+            </button>
+            <button
+              className={`toggle-pill ${unit === "fahrenheit" ? "active" : ""}`}
+              onClick={() => toggleUnit("fahrenheit")}
+            >
+              °F
+            </button>
           </div>
         </div>
-      )}
-      {forecastType === "daily" && forecast.length > 0 && (
-        <div className="mt-6">
-          <h3 className="font-semibold mb-2">Daily Forecast</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-max text-sm">
-              <thead>
-                <tr>
-                  <th className="px-2">Date</th>
-                  <th className="px-2">
-                    Max ({unit === "celsius" ? "°C" : "°F"})
-                  </th>
-                  <th className="px-2">
-                    Min ({unit === "celsius" ? "°C" : "°F"})
-                  </th>
-                  <th className="px-2">Precip (mm)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {forecast.map((d, i) => (
-                  <tr key={i}>
-                    <td className="px-2 whitespace-nowrap">{d.date}</td>
-                    <td className="px-2">{d.tempMax}</td>
-                    <td className="px-2">{d.tempMin}</td>
-                    <td className="px-2">{d.precipitation}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+        {!isOnline && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: 10,
+              borderRadius: 8,
+              background: "#fff3bf",
+              color: "#92400e",
+            }}
+          >
+            You are offline. Only cached data is available.
           </div>
+        )}
+
+        <div style={{ marginTop: 14 }} className="layout">
+          <div className="main-card">
+            {loading && (
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>Loading…</div>
+            )}
+            {!weather && !loading && (
+              <div className="center">
+                Search for a city or allow location to view weather.
+              </div>
+            )}
+
+            {weather && (
+              <>
+                <div className="current-row">
+                  <div className="current-left">
+                    <div className="city">
+                      {weather.city}
+                      {weather.country ? `, ${weather.country}` : ""}
+                    </div>
+                    <p className="big-temp">
+                      {unit === "celsius"
+                        ? `${weather.tempC}°C`
+                        : `${cToF(weather.tempC)}°F`}
+                    </p>
+
+                    <div className="kv">
+                      <div>💧 {weather.humidity ?? "-"}%</div>
+                      <div>🌬 {weather.wind ?? "-"} km/h</div>
+                    </div>
+                  </div>
+
+                  <div className="current-right">
+                    {/* big stylized icon (simple) */}
+                    <div style={{ fontSize: 48 }}>
+                      {/* dynamic icon by temp/humidity could be added */}☀️
+                    </div>
+                  </div>
+                </div>
+
+                <div className="tabs" style={{ marginTop: 14 }}>
+                  <div
+                    className={`tab ${
+                      forecastType === "daily" ? "active" : ""
+                    }`}
+                    onClick={() => setForecastType("daily")}
+                  >
+                    Daily
+                  </div>
+                  <div
+                    className={`tab ${
+                      forecastType === "hourly" ? "active" : ""
+                    }`}
+                    onClick={() => setForecastType("hourly")}
+                  >
+                    Hourly
+                  </div>
+                </div>
+
+                {/* Hourly */}
+                {forecastType === "hourly" && hourly.length > 0 && (
+                  <div className="hourly-scroll" aria-hidden={false}>
+                    {hourly.slice(0, 16).map((h, i) => (
+                      <div className="hour-card" key={i}>
+                        <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                          {new Date(h.time).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                        <div style={{ marginTop: 6, fontWeight: 700 }}>
+                          {displayTemp(h.tempC)}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "var(--muted)",
+                            marginTop: 6,
+                          }}
+                        >
+                          {h.humidity ?? "-"}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Daily */}
+                {forecastType === "daily" && daily.length > 0 && (
+                  <div className="forecast-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Max</th>
+                          <th>Min</th>
+                          <th>Precip (mm)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {daily.slice(0, 10).map((d, i) => (
+                          <tr key={i}>
+                            <td>{new Date(d.date).toLocaleDateString()}</td>
+                            <td>{displayTemp(d.maxC)}</td>
+                            <td>{displayTemp(d.minC)}</td>
+                            <td>{d.precipitation ?? "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <aside className="sidebar">
+            <div style={{ fontWeight: 700 }}>Saved Locations</div>
+
+            {/* render saved (history) */}
+            {history.length === 0 && (
+              <div style={{ color: "var(--muted)" }}>
+                No saved locations yet
+              </div>
+            )}
+            {history.map((h, idx) => (
+              <div key={idx} className="saved-card">
+                <div>
+                  <div className="city-small">{h.city}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                    {h.country}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div className="temp-small">
+                    {unit === "celsius" ? `${h.tempC}°C` : `${cToF(h.tempC)}°F`}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                    {h.humidity ?? "-"}%
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Weather alert placeholder */}
+            <div className="alert-box">Weather alerts will appear here</div>
+
+            {/* History component (compact) */}
+            <div style={{ marginTop: 12 }}>
+              <HistoryList
+                items={history}
+                onSelect={handleSelectHistory}
+                onClear={() => {
+                  localStorage.removeItem("weather-history");
+                  setHistory([]);
+                }}
+                unit={unit}
+              />
+            </div>
+          </aside>
         </div>
-      )}
-      <HistoryList
-        items={history}
-        onSelect={handleSearch}
-        onClear={() => {
-          localStorage.removeItem("weather-history");
-          setHistory([]);
-        }}
-      />
+      </div>
     </div>
   );
 }

@@ -1,33 +1,61 @@
+// src/components/HistoryList.tsx
 import React from "react";
 
-interface HistoryListProps {
-  items: { city: string; country: string; temperature: number }[];
-  onSelect: (city: string) => void;
-  onClear: () => void;
+interface Item {
+  city: string;
+  country?: string;
+  tempC: number;
+  humidity?: number | null;
 }
 
 export default function HistoryList({
   items,
   onSelect,
   onClear,
-}: HistoryListProps) {
+  unit = "celsius",
+}: {
+  items: Item[];
+  onSelect: (city: string) => void;
+  onClear: () => void;
+  unit?: "celsius" | "fahrenheit";
+}) {
+  const cToF = (c: number) => Math.round((c * 9) / 5 + 32);
   return (
-    <div className="mt-6 max-w-md">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-medium">Search History</h3>
-        <button onClick={onClear} className="text-sm text-red-600">
+    <div className="history">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 6,
+        }}
+      >
+        <h4 style={{ margin: 0 }}>Search History</h4>
+        <button
+          onClick={onClear}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#dc2626",
+            cursor: "pointer",
+          }}
+        >
           Clear
         </button>
       </div>
-      {items.length === 0 && <p>No history yet.</p>}
-      <ul className="space-y-1">
+      <ul style={{ paddingLeft: 0 }}>
+        {items.length === 0 && (
+          <li style={{ color: "var(--muted)" }}>No history yet.</li>
+        )}
         {items.map((h, idx) => (
           <li
             key={idx}
-            className="cursor-pointer hover:underline"
+            style={{ padding: "6px 0", cursor: "pointer" }}
             onClick={() => onSelect(h.city)}
           >
-            {h.city}, {h.country} — {h.temperature}°C
+            {h.city}
+            {h.country ? `, ${h.country}` : ""} —{" "}
+            {unit === "celsius" ? `${h.tempC}°C` : `${cToF(h.tempC)}°F`}
           </li>
         ))}
       </ul>
