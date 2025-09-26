@@ -448,9 +448,7 @@ export default function Home() {
               <div key={idx} className="saved-card">
                 <div>
                   <div className="city-small">{h.city}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                    {h.country}
-                  </div>
+                  <div className="country-small">{h.country}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div className="temp-small">
