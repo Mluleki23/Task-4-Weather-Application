@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# Weather App — README
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
 
-Currently, two official plugins are available:
+A React + TypeScript weather application that shows real-time weather for the user’s current location and any searched location. Users can save locations, switch between Celsius and Fahrenheit, and toggle light/dark themes.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+* **Real-Time Weather:** Temperature, humidity, wind speed, hourly and daily forecasts.
+* **Location Detection:** Auto-detect user location (with permission) or search for a city.
+* **Saved Locations:** Persist multiple locations for quick access.
+* **Customization:** Switch between °C/°F and light/dark themes.
+* **Offline Access:** View cached data when offline.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+* React 18 + TypeScript
+* Context API for global state
+* Axios or Fetch API for weather data (e.g., OpenWeatherMap)
+* LocalStorage or IndexedDB for caching and saved locations
+* Tailwind CSS or standard CSS modules for styling
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Setup
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. **Clone & Install**
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone https://github.com/<your-username>/weather-app.git
+cd weather-app
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. **Environment Variables**
+   Create a `.env` file:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+VITE_WEATHER_API_KEY=your_api_key
+```
+
+3. **Run**
+
+```bash
+npm run dev     # Start development server
+npm run build   # Production build
+```
+
+## Project Structure
+
+```
+src/
+  components/     # WeatherCard, SearchBar, etc.
+  contexts/       # ThemeContext, WeatherContext
+  hooks/          # useWeather, useGeolocation
+  pages/          # Home, Settings
+  utils/          # helper functions
+```
+
+## Key Components
+
+* **Home Page:** Current and saved locations, search bar.
+* **WeatherCard:** Displays temperature, humidity, wind, and forecast.
+* **Settings:** Theme and unit toggles.
+
+## Notes
+
+* Ensure API key is kept private.
+* Gracefully handle denied location permission.
+* Provide clear loading/error states for better UX.
+
+## Deployment
+
+Deploy on Vercel, Netlify, or GitHub Pages. Set environment variables on the host.
+
+---
+
+
