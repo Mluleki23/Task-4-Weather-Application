@@ -260,23 +260,25 @@ body {
 }
 
 /* Hourly scroll cards */
-.hourly-scroll {
-  display: flex;
-  gap: 0.75rem;
+.hourly-vertical {
   margin-top: 1rem;
+  width: 100%;
   overflow-x: auto;
-  padding-bottom: 8px;
 }
-.hour-card {
-  min-width: 86px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 12px;
-  padding: 0.6rem;
-  text-align: center;
-  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.05);
+.hourly-vertical table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
 }
-.dark-theme .hour-card {
-  background: rgba(255, 255, 255, 0.04);
+.hourly-vertical th,
+.hourly-vertical td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  font-size: 0.98rem;
+}
+.dark-theme .hourly-vertical th,
+.dark-theme .hourly-vertical td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Daily table */
