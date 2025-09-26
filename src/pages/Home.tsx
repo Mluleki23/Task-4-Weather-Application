@@ -1,46 +1,20 @@
-// src/pages/Home.tsx
 import React, { useEffect, useState } from "react";
 import SearchBar from "../components/SearchBar";
-import WeatherCard from "../components/WeatherCard";
 import HistoryList from "../components/HistoryList";
 
-/* Notification component */
-function Notification({
-  message,
-  type = "info",
-  onClose,
-}: {
-  message: string;
-  type?: "success" | "error" | "info";
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3200);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  return (
-    <div className={`notification ${type === "error" ? "error" : ""}`}>
-      {message}
-    </div>
-  );
-}
-
-/* ---- helper conversions ---- */
 const cToF = (c: number) => Math.round((c * 9) / 5 + 32);
-const fToC = (f: number) => Math.round(((f - 32) * 5) / 9);
 const round = (n: number) => Math.round(n);
 
-/* ---- Types ---- */
 type HistoryItem = {
   city: string;
   country?: string;
-  tempC: number; // stored in Celsius
+  tempC: number;
   wind?: number;
   humidity?: number | null;
   ts?: number;
 };
 
-export default function Home() {
+const Home: React.FC = () => {
   const [notification, setNotification] = useState<{
     message: string;
     type?: "success" | "error" | "info";
@@ -55,7 +29,6 @@ export default function Home() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
-  /* Load history and geolocation on mount */
   useEffect(() => {
     const stored = localStorage.getItem("weather-history");
     if (stored) setHistory(JSON.parse(stored));
@@ -65,12 +38,10 @@ export default function Home() {
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
 
-    // Try geolocation (non-blocking)
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           const { latitude, longitude } = pos.coords;
-          // reverse geocode for readable name
           try {
             const geoRes = await fetch(
               `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=en&format=json`
@@ -80,25 +51,18 @@ export default function Home() {
             const name = loc?.name ?? "Your location";
             const country = loc?.country ?? "";
             await fetchWeatherByCoords(latitude, longitude, name, country);
-          } catch (e) {
-            // ignore; user can search manually
-          }
+          } catch (e) {}
         },
-        () => {
-          // denied or failed; no-op
-        },
+        () => {},
         { timeout: 7000 }
       );
     }
-
     return () => {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* Save history helper */
   const saveHistory = (entry: HistoryItem) => {
     const updated = [
       entry,
@@ -110,7 +74,6 @@ export default function Home() {
     localStorage.setItem("weather-history", JSON.stringify(updated));
   };
 
-  /* Core fetch function (always request celsius and convert client-side) */
   const fetchWeatherByCoords = async (
     latitude: number,
     longitude: number,
@@ -125,7 +88,6 @@ export default function Home() {
       const w = await res.json();
       if (!w.current_weather) throw new Error("No weather data returned");
 
-      // get humidity for the current hour if available
       let humidity: number | null = null;
       if (w.hourly && w.hourly.time && w.hourly.relative_humidity_2m) {
         const now = w.current_weather.time;
@@ -155,7 +117,6 @@ export default function Home() {
         ts: Date.now(),
       };
 
-      // build forecasts in Celsius (store internal as Celsius)
       const hourlyArr: any[] = [];
       if (w.hourly && w.hourly.time) {
         hourlyArr.push(
@@ -187,9 +148,32 @@ export default function Home() {
       setHourly(hourlyArr);
       setDaily(dailyArr);
       saveHistory(entry);
+      // Weather code notification
+      let weatherMsg = "";
+      // Try current weather code first, fallback to daily[0]
+      let code = w.current_weather?.weathercode;
+      if (typeof code !== "number" && w.daily?.weathercode?.length > 0) {
+        code = w.daily.weathercode[0];
+      }
+      if (typeof code === "number") {
+        // Open-Meteo weather codes: 0=clear, 1/2/3=mainly clear/partly cloudy, 45/48=fog, 51-67=drizzle, 80-82=rain showers, 95-99=thunderstorm
+        if (code === 0) weatherMsg = "It's sunny today!";
+        else if ([1, 2, 3].includes(code))
+          weatherMsg = "It's mostly clear today.";
+        else if (
+          [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)
+        )
+          weatherMsg = "Rain expected today!";
+        else if ([45, 48].includes(code))
+          weatherMsg = "Foggy conditions today.";
+        else if ([95, 96, 99].includes(code))
+          weatherMsg = "Thunderstorms possible today!";
+      }
       setNotification({
-        message: `Weather for ${name} loaded`,
-        type: "success",
+        message: weatherMsg
+          ? `${weatherMsg} Weather for ${name} loaded`
+          : `Weather for ${name} loaded`,
+        type: weatherMsg ? "info" : "success",
       });
     } catch (e: any) {
       setNotification({
@@ -201,7 +185,6 @@ export default function Home() {
     }
   };
 
-  /* Search handler (geocode then fetch) */
   const handleSearch = async (query: string) => {
     if (!query || query.trim().length === 0) return;
     setLoading(true);
@@ -223,37 +206,36 @@ export default function Home() {
         loc.country
       );
     } catch (e: any) {
-      setNotification({ message: e.message || "Search failed", type: "error" });
+      setNotification({
+        message: e.message || "Error searching for city",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  /* Unit change - we keep stored data in Celsius, we simply switch the UI rendering */
-  const toggleUnit = (u: "celsius" | "fahrenheit") => {
-    setUnit(u);
-    setNotification({
-      message: `Units: ${u === "celsius" ? "°C" : "°F"}`,
-      type: "info",
-    });
-  };
-
-  /* Theme toggle */
-  const toggleTheme = (t: "light" | "dark") => {
-    setTheme(t);
-    setNotification({
-      message: `${t === "light" ? "Light" : "Dark"} theme enabled`,
-      type: "info",
-    });
-  };
-
-  /* Helpers for display */
   const displayTemp = (tempC: number | null | undefined) => {
     if (tempC === null || tempC === undefined) return "-";
     return unit === "celsius" ? `${tempC}°C` : `${cToF(tempC)}°F`;
   };
 
-  /* When user selects a past history item (city name), trigger search again */
+  const toggleTheme = (t: "light" | "dark") => {
+    setTheme(t);
+    setNotification({
+      message:
+        t === "light" ? "Switched to Light Theme" : "Switched to Dark Theme",
+      type: "info",
+    });
+  };
+  const toggleUnit = (u: "celsius" | "fahrenheit") => {
+    setUnit(u);
+    setNotification({
+      message:
+        u === "celsius" ? "Switched to Celsius" : "Switched to Fahrenheit",
+      type: "info",
+    });
+  };
   const handleSelectHistory = (city: string) => {
     handleSearch(city);
   };
@@ -263,17 +245,31 @@ export default function Home() {
       className={`app-root ${theme === "light" ? "light-theme" : "dark-theme"}`}
     >
       <div className="app-frame">
+        <div
+          style={{
+            width: "100%",
+            textAlign: "center",
+            margin: "32px 0 24px 0",
+          }}
+        >
+          <span
+            style={{
+              fontWeight: 800,
+              fontSize: "2.2rem",
+              letterSpacing: "0.04em",
+              color: "var(--primary, #2563eb)",
+              textShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            }}
+          >
+            Weather Application
+          </span>
+        </div>
         <div className="header">
-          <div className="brand">
-            <h1>Weather Application</h1>
-          </div>
-
           <div className="header-center">
             <div style={{ width: "100%" }}>
               <SearchBar onSearch={handleSearch} />
             </div>
           </div>
-
           <div className="controls">
             <button
               className={`toggle-pill ${theme === "light" ? "active" : ""}`}
@@ -289,7 +285,6 @@ export default function Home() {
             >
               Dark
             </button>
-
             <button
               className={`toggle-pill ${unit === "celsius" ? "active" : ""}`}
               onClick={() => toggleUnit("celsius")}
@@ -351,20 +346,15 @@ export default function Home() {
                   </div>
 
                   <div className="current-right">
-                    {/* big stylized icon (dynamic for rain) */}
                     <div style={{ fontSize: 48 }}>
                       {(() => {
-                        // Show rain icon if humidity is high or if precipitation is detected
-                        // You can refine this logic as needed
                         const isRainy = (() => {
-                          // Check for high humidity or recent rain in forecast
                           if (
                             weather.humidity !== undefined &&
                             weather.humidity !== null &&
                             weather.humidity > 80
                           )
                             return true;
-                          // Check for rain in daily forecast (today)
                           if (
                             daily &&
                             daily.length > 0 &&
@@ -399,7 +389,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Hourly */}
                 {forecastType === "hourly" && hourly.length > 0 && (
                   <div className="hourly-vertical" aria-hidden={false}>
                     <table style={{ width: "100%" }}>
@@ -430,7 +419,6 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* Daily */}
                 {forecastType === "daily" && daily.length > 0 && (
                   <div className="forecast-table">
                     <table>
@@ -459,11 +447,8 @@ export default function Home() {
             )}
           </div>
 
-          {/* Sidebar */}
           <aside className="sidebar">
             <div style={{ fontWeight: 700 }}>Saved Locations</div>
-
-            {/* render saved (history) */}
             {history.length === 0 && (
               <div style={{ color: "var(--muted)" }}>
                 No saved locations yet
@@ -485,8 +470,6 @@ export default function Home() {
                 </div>
               </div>
             ))}
-
-            {/* Weather alert box: show notification or placeholder */}
             <div
               className={`alert-box${
                 notification && notification.type === "error" ? " error" : ""
@@ -496,8 +479,6 @@ export default function Home() {
                 ? notification.message
                 : "Weather alerts will appear here"}
             </div>
-
-            {/* History component (compact) */}
             <div style={{ marginTop: 12 }}>
               <HistoryList
                 items={history}
@@ -514,4 +495,6 @@ export default function Home() {
       </div>
     </div>
   );
-}
+};
+
+export default Home;
