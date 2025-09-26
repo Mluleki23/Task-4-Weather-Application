@@ -1,3 +1,43 @@
+/* Navbar styles */
+.navbar {
+  width: 100%;
+  padding: 1rem 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.08);
+}
+.dark-theme .navbar {
+  background: #0a2236;
+  color: #e6eef6;
+  border-bottom: 1px solid #223344;
+}
+
+/* Footer styles */
+.footer {
+  width: 100%;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--muted);
+  background: #f3f6fa;
+  padding: 1rem 0 0.5rem 0;
+  margin-top: auto;
+  border-top: 1px solid #e5e7eb;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: 100;
+}
+.dark-theme .footer {
+  background: #10151c;
+  color: #e6eef6;
+  border-top: 1px solid #223344;
+}
 /* =========================
    App.css - SkyCast styles
    Replace your entire App.css with this
@@ -35,8 +75,8 @@ body {
   min-height: 100vh;
   padding: 1.25rem;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
   gap: 1rem;
 }
 
