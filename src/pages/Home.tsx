@@ -262,14 +262,6 @@ export default function Home() {
     <div
       className={`app-root ${theme === "light" ? "light-theme" : "dark-theme"}`}
     >
-      {notification && (
-        <Notification
-          message={notification.message}
-          type={notification.type === "error" ? "error" : "info"}
-          onClose={() => setNotification(null)}
-        />
-      )}
-
       <div className="app-frame">
         <div className="header">
           <div className="brand">
@@ -471,8 +463,16 @@ export default function Home() {
               </div>
             ))}
 
-            {/* Weather alert placeholder */}
-            <div className="alert-box">Weather alerts will appear here</div>
+            {/* Weather alert box: show notification or placeholder */}
+            <div
+              className={`alert-box${
+                notification && notification.type === "error" ? " error" : ""
+              }`}
+            >
+              {notification
+                ? notification.message
+                : "Weather alerts will appear here"}
+            </div>
 
             {/* History component (compact) */}
             <div style={{ marginTop: 12 }}>
