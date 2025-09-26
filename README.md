@@ -26,7 +26,7 @@ A React + TypeScript weather application that shows real-time weather for the us
 1. **Clone & Install**
 
 ```bash
-git clone https://github.com/<your-username>/weather-app.git
+git clone https://github.com/Mluleki23/Task-4-Weather-Application
 cd weather-app
 npm install
 ```
