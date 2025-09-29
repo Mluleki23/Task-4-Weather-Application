@@ -18,7 +18,7 @@
   border-bottom: 1px solid #223344;
 }
 
-/* Footer styles */
+
 .footer {
   width: 100%;
   text-align: center;
@@ -38,12 +38,7 @@
   color: #e6eef6;
   border-top: 1px solid #223344;
 }
-/* =========================
-   App.css - SkyCast styles
-   Replace your entire App.css with this
-========================= */
 
-/* Font fallback - ensure Inter/Roboto available in your project for best match */
 :root {
   --accent: #0ea5e9;
   --card-bg-light: rgba(255, 255, 255, 0.95);
@@ -53,7 +48,7 @@
   --radius-lg: 1rem;
 }
 
-/* Global layout */
+
 * {
   box-sizing: border-box;
 }
@@ -70,7 +65,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* App container (Home root uses X-theme class) */
+
 .app-root {
   min-height: 100vh;
   padding: 1.25rem;
@@ -80,7 +75,6 @@ body {
   gap: 1rem;
 }
 
-/* Theme backgrounds (applied to a wrapper div) */
 .light-theme {
   background: #f3f6fa;
   color: #0f172a;
@@ -91,7 +85,7 @@ body {
   color: #e6eef6;
 }
 
-/* A centered app card with padding to mimic the mockup border radius */
+
 .app-frame {
   width: 100%;
   max-width: 1200px;
@@ -106,7 +100,7 @@ body {
   box-shadow: 0 10px 30px rgba(2, 6, 23, 0.12);
 }
 
-/* Header row */
+
 .header {
   display: flex;
   align-items: center;
@@ -127,7 +121,6 @@ body {
   color: inherit;
 }
 
-/* Search bar placed center */
 .header-center {
   flex: 1;
   display: flex;
@@ -135,7 +128,7 @@ body {
   align-items: center;
 }
 
-/* SearchBar styling */
+
 .search-bar {
   display: flex;
   gap: 0.5rem;
@@ -185,14 +178,14 @@ body {
   transform: translateY(-2px);
 }
 
-/* Right controls (theme + units) */
+
 .controls {
   display: flex;
   gap: 0.5rem;
   align-items: center;
 }
 
-/* Toggle buttons style */
+
 .toggle-pill {
   border-radius: 999px;
   padding: 0.35rem 0.8rem;
@@ -213,7 +206,7 @@ body {
   box-shadow: 0 8px 22px rgba(14, 165, 233, 0.2);
 }
 
-/* Layout: main + sidebar */
+
 .layout {
   display: grid;
   grid-template-columns: 1fr 320px;
@@ -221,7 +214,7 @@ body {
   align-items: start;
 }
 
-/* Left column card - main weather + forecast */
+
 .main-card {
   background: var(--card-bg-light);
   border-radius: var(--radius-lg);
@@ -233,7 +226,7 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
-/* Current weather area */
+
 .current-row {
   display: flex;
   gap: 1rem;
@@ -251,7 +244,6 @@ body {
   align-items: center;
 }
 
-/* Big temp */
 .city {
   font-weight: 700;
   font-size: 1.2rem;
@@ -434,23 +426,51 @@ body {
   display: none;
 }
 
+
 @media (max-width: 900px) {
+
   .layout {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
-  .sidebar {
-    order: 2;
-  }
+
+ 
   .main-card {
     order: 1;
   }
+  .sidebar {
+    order: 2;
+    width: 100%;
+  }
+
+  /* Reduce padding for smaller screens */
   .app-frame {
-    padding: 0.9rem;
+    padding: 0.75rem;
   }
+
+ 
   .big-temp {
-    font-size: 3rem;
+    font-size: 2.5rem;
   }
+
   .search-bar {
-    max-width: 520px;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+  .search-input {
+    width: 100%;
+  }
+
+
+  .header {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+ 
+  .footer {
+    position: static;  
+    margin-top: 1rem;
   }
 }
