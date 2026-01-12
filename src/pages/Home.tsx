@@ -94,60 +94,12 @@ export default function Home() {
         (error) => {
           console.error("Initial geolocation error:", error);
           setNotification({
-            message: `Location access denied. Trying IP-based detection...`,
+            message: "Location access denied. Using demo location...",
             type: "info",
           });
           
-          // Try IP-based location as fallback
-          const tryIPLocation = async () => {
-            try {
-              setNotification({ message: "Detecting location via IP...", type: "info" });
-              
-              // Try a simpler, more reliable service
-              try {
-                const response = await fetch('https://ipapi.co/json/');
-                const data = await response.json();
-                console.log("IP location data:", data);
-                
-                if (data.latitude && data.longitude) {
-                  const name = data.city || "Your location";
-                  const country = data.country_name || "";
-                  await fetchWeatherByCoords(data.latitude, data.longitude, name, country);
-                  return;
-                }
-              } catch (e) {
-                console.warn("Primary IP service failed:", e);
-              }
-              
-              // Try browser geolocation as last resort
-              if ("geolocation" in navigator) {
-                setNotification({ message: "Trying browser location as last resort...", type: "info" });
-                navigator.geolocation.getCurrentPosition(
-                  async (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    await fetchWeatherByCoords(latitude, longitude, "Your location", "");
-                  },
-                  () => {
-                    setNotification({
-                      message: "Location detection failed. Please enter your city manually.",
-                      type: "error",
-                    });
-                  },
-                  { timeout: 5000, enableHighAccuracy: false }
-                );
-              } else {
-                throw new Error("No location methods available");
-              }
-            } catch (e) {
-              console.error("All location detection failed:", e);
-              setNotification({
-                message: "Location detection failed. Please use the search bar above.",
-                type: "error",
-              });
-            }
-          };
-          
-          tryIPLocation();
+          // Use demo location as fallback
+          fetchWeatherByCoords(-29.6099, 30.3783, "Pietermaritzburg", "South Africa");
         },
         { 
           timeout: 7000,
@@ -198,60 +150,9 @@ export default function Home() {
         (error) => {
           console.error("Manual geolocation error:", error);
           setNotification({
-            message: `Location access denied: ${error.message}`,
+            message: "Location access denied. Please enter your city manually.",
             type: "error",
           });
-          
-          // Try IP-based location as fallback
-          const tryIPLocation = async () => {
-            try {
-              setNotification({ message: "Detecting location via IP...", type: "info" });
-              
-              // Try a simpler, more reliable service
-              try {
-                const response = await fetch('https://ipapi.co/json/');
-                const data = await response.json();
-                console.log("IP location data:", data);
-                
-                if (data.latitude && data.longitude) {
-                  const name = data.city || "Your location";
-                  const country = data.country_name || "";
-                  await fetchWeatherByCoords(data.latitude, data.longitude, name, country);
-                  return;
-                }
-              } catch (e) {
-                console.warn("Primary IP service failed:", e);
-              }
-              
-              // Try browser geolocation as last resort
-              if ("geolocation" in navigator) {
-                setNotification({ message: "Trying browser location as last resort...", type: "info" });
-                navigator.geolocation.getCurrentPosition(
-                  async (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    await fetchWeatherByCoords(latitude, longitude, "Your location", "");
-                  },
-                  () => {
-                    setNotification({
-                      message: "Location detection failed. Please enter your city manually.",
-                      type: "error",
-                    });
-                  },
-                  { timeout: 5000, enableHighAccuracy: false }
-                );
-              } else {
-                throw new Error("No location methods available");
-              }
-            } catch (e) {
-              console.error("All location detection failed:", e);
-              setNotification({
-                message: "Location detection failed. Please use the search bar above.",
-                type: "error",
-              });
-            }
-          };
-          
-          tryIPLocation();
         },
         { 
           timeout: 10000,
@@ -397,7 +298,7 @@ export default function Home() {
     }
   };
 
-  /* Unit change - we keep stored data in Celsius, we simply switch the UI rendering */
+  /* Unit change - we keep stored data in Celsius, we simply switch UI rendering */
   const toggleUnit = (u: "celsius" | "fahrenheit") => {
     setUnit(u);
     setNotification({
