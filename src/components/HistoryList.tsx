@@ -12,11 +12,13 @@ export default function HistoryList({
   items,
   onSelect,
   onClear,
+  onDelete,
   unit = "celsius",
 }: {
   items: Item[];
   onSelect: (city: string) => void;
   onClear: () => void;
+  onDelete: (index: number) => void;
   unit?: "celsius" | "fahrenheit";
 }) {
   const cToF = (c: number) => Math.round((c * 9) / 5 + 32);
@@ -50,12 +52,33 @@ export default function HistoryList({
         {items.map((h, idx) => (
           <li
             key={idx}
-            style={{ padding: "6px 0", cursor: "pointer" }}
-            onClick={() => onSelect(h.city)}
+            style={{ 
+              padding: "6px 0", 
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}
           >
-            {h.city}
-            {h.country ? `, ${h.country}` : ""} —{" "}
-            {unit === "celsius" ? `${h.tempC}°C` : `${cToF(h.tempC)}°F`}
+            <span onClick={() => onSelect(h.city)}>
+              {h.city}
+              {h.country ? `, ${h.country}` : ""} —{" "}
+              {unit === "celsius" ? `${h.tempC}°C` : `${cToF(h.tempC)}°F`}
+            </span>
+            <button
+              onClick={() => onDelete(idx)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#dc2626",
+                cursor: "pointer",
+                fontSize: "12px",
+                padding: "2px 6px"
+              }}
+              title="Delete this item"
+            >
+              ❌
+            </button>
           </li>
         ))}
       </ul>

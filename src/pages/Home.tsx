@@ -327,6 +327,17 @@ export default function Home() {
     handleSearch(city);
   };
 
+  /* Delete individual history item */
+  const handleDeleteHistory = (index: number) => {
+    const updated = history.filter((_, i) => i !== index);
+    setHistory(updated);
+    localStorage.setItem("weather-history", JSON.stringify(updated));
+    setNotification({
+      message: "History item deleted",
+      type: "info",
+    });
+  };
+
   return (
     <div
       className={`app-root ${theme === "light" ? "light-theme" : "dark-theme"}`}
@@ -580,6 +591,7 @@ export default function Home() {
               <HistoryList
                 items={history}
                 onSelect={handleSelectHistory}
+                onDelete={handleDeleteHistory}
                 onClear={() => {
                   localStorage.removeItem("weather-history");
                   setHistory([]);
