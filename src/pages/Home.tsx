@@ -67,8 +67,10 @@ export default function Home() {
 
     // Try geolocation (non-blocking)
     if ("geolocation" in navigator) {
+      console.log("Geolocation is available, requesting position...");
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
+          console.log("Geolocation success:", pos);
           const { latitude, longitude } = pos.coords;
           // reverse geocode for readable name
           try {
@@ -76,19 +78,88 @@ export default function Home() {
               `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=en&format=json`
             );
             const geo = await geoRes.json();
+            console.log("Geocoding response:", geo);
             const loc = geo.results?.[0];
             const name = loc?.name ?? "Your location";
             const country = loc?.country ?? "";
             await fetchWeatherByCoords(latitude, longitude, name, country);
           } catch (e) {
-            // ignore; user can search manually
+            console.error("Geocoding failed:", e);
+            setNotification({
+              message: "Failed to get location name",
+              type: "error",
+            });
           }
         },
-        () => {
-          // denied or failed; no-op
+        (error) => {
+          console.error("Initial geolocation error:", error);
+          setNotification({
+            message: `Location access denied. Trying IP-based detection...`,
+            type: "info",
+          });
+          
+          // Try IP-based location as fallback
+          const tryIPLocation = async () => {
+            try {
+              setNotification({ message: "Detecting location via IP...", type: "info" });
+              
+              // Try a simpler, more reliable service
+              try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                console.log("IP location data:", data);
+                
+                if (data.latitude && data.longitude) {
+                  const name = data.city || "Your location";
+                  const country = data.country_name || "";
+                  await fetchWeatherByCoords(data.latitude, data.longitude, name, country);
+                  return;
+                }
+              } catch (e) {
+                console.warn("Primary IP service failed:", e);
+              }
+              
+              // Try browser geolocation as last resort
+              if ("geolocation" in navigator) {
+                setNotification({ message: "Trying browser location as last resort...", type: "info" });
+                navigator.geolocation.getCurrentPosition(
+                  async (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    await fetchWeatherByCoords(latitude, longitude, "Your location", "");
+                  },
+                  () => {
+                    setNotification({
+                      message: "Location detection failed. Please enter your city manually.",
+                      type: "error",
+                    });
+                  },
+                  { timeout: 5000, enableHighAccuracy: false }
+                );
+              } else {
+                throw new Error("No location methods available");
+              }
+            } catch (e) {
+              console.error("All location detection failed:", e);
+              setNotification({
+                message: "Location detection failed. Please use the search bar above.",
+                type: "error",
+              });
+            }
+          };
+          
+          tryIPLocation();
         },
-        { timeout: 7000 }
+        { 
+          timeout: 7000,
+          enableHighAccuracy: true
+        }
       );
+    } else {
+      console.log("Geolocation is not available");
+      setNotification({
+        message: "Geolocation is not supported by your browser",
+        type: "error",
+      });
     }
 
     return () => {
@@ -97,6 +168,103 @@ export default function Home() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* Manual geolocation trigger */
+  const handleGetLocation = () => {
+    if ("geolocation" in navigator) {
+      setNotification({ message: "Getting your location...", type: "info" });
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          console.log("Manual geolocation success:", pos);
+          const { latitude, longitude } = pos.coords;
+          try {
+            const geoRes = await fetch(
+              `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=en&format=json`
+            );
+            const geo = await geoRes.json();
+            console.log("Manual geocoding response:", geo);
+            const loc = geo.results?.[0];
+            const name = loc?.name ?? "Your location";
+            const country = loc?.country ?? "";
+            await fetchWeatherByCoords(latitude, longitude, name, country);
+          } catch (e) {
+            console.error("Manual geocoding failed:", e);
+            setNotification({
+              message: "Failed to get location name",
+              type: "error",
+            });
+          }
+        },
+        (error) => {
+          console.error("Manual geolocation error:", error);
+          setNotification({
+            message: `Location access denied: ${error.message}`,
+            type: "error",
+          });
+          
+          // Try IP-based location as fallback
+          const tryIPLocation = async () => {
+            try {
+              setNotification({ message: "Detecting location via IP...", type: "info" });
+              
+              // Try a simpler, more reliable service
+              try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                console.log("IP location data:", data);
+                
+                if (data.latitude && data.longitude) {
+                  const name = data.city || "Your location";
+                  const country = data.country_name || "";
+                  await fetchWeatherByCoords(data.latitude, data.longitude, name, country);
+                  return;
+                }
+              } catch (e) {
+                console.warn("Primary IP service failed:", e);
+              }
+              
+              // Try browser geolocation as last resort
+              if ("geolocation" in navigator) {
+                setNotification({ message: "Trying browser location as last resort...", type: "info" });
+                navigator.geolocation.getCurrentPosition(
+                  async (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    await fetchWeatherByCoords(latitude, longitude, "Your location", "");
+                  },
+                  () => {
+                    setNotification({
+                      message: "Location detection failed. Please enter your city manually.",
+                      type: "error",
+                    });
+                  },
+                  { timeout: 5000, enableHighAccuracy: false }
+                );
+              } else {
+                throw new Error("No location methods available");
+              }
+            } catch (e) {
+              console.error("All location detection failed:", e);
+              setNotification({
+                message: "Location detection failed. Please use the search bar above.",
+                type: "error",
+              });
+            }
+          };
+          
+          tryIPLocation();
+        },
+        { 
+          timeout: 10000,
+          enableHighAccuracy: true
+        }
+      );
+    } else {
+      setNotification({
+        message: "Geolocation is not supported by your browser",
+        type: "error",
+      });
+    }
+  };
 
   /* Save history helper */
   const saveHistory = (entry: HistoryItem) => {
@@ -326,7 +494,16 @@ export default function Home() {
             )}
             {!weather && !loading && (
               <div className="center">
-                Search for a city or allow location to view weather.
+                <div style={{ marginBottom: 16 }}>
+                  Search for a city or allow location to view weather.
+                </div>
+                <button
+                  onClick={handleGetLocation}
+                  className="toggle-pill"
+                  style={{ marginBottom: 16 }}
+                >
+                  📍 Use My Current Location
+                </button>
               </div>
             )}
 
