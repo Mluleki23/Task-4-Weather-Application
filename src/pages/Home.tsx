@@ -1,7 +1,6 @@
 // src/pages/Home.tsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import SearchBar from "../components/SearchBar";
-import WeatherCard from "../components/WeatherCard";
 import HistoryList from "../components/HistoryList";
 
 /* Notification component */
@@ -27,7 +26,6 @@ function Notification({
 
 /* ---- helper conversions ---- */
 const cToF = (c: number) => Math.round((c * 9) / 5 + 32);
-const fToC = (f: number) => Math.round(((f - 32) * 5) / 9);
 const round = (n: number) => Math.round(n);
 
 /* ---- Types ---- */
@@ -97,13 +95,18 @@ export default function Home() {
             message: "Location access denied. Using demo location...",
             type: "info",
           });
-          
+
           // Use demo location as fallback
-          fetchWeatherByCoords(-29.6099, 30.3783, "Pietermaritzburg", "South Africa");
+          fetchWeatherByCoords(
+            -29.6099,
+            30.3783,
+            "Pietermaritzburg",
+            "South Africa"
+          );
         },
-        { 
+        {
           timeout: 7000,
-          enableHighAccuracy: true
+          enableHighAccuracy: true,
         }
       );
     } else {
@@ -154,9 +157,9 @@ export default function Home() {
             type: "error",
           });
         },
-        { 
+        {
           timeout: 10000,
-          enableHighAccuracy: true
+          enableHighAccuracy: true,
         }
       );
     } else {

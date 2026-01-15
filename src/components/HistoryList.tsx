@@ -1,5 +1,4 @@
 // src/components/HistoryList.tsx
-import React from "react";
 
 interface Item {
   city: string;
@@ -52,12 +51,12 @@ export default function HistoryList({
         {items.map((h, idx) => (
           <li
             key={idx}
-            style={{ 
-              padding: "6px 0", 
+            style={{
+              padding: "6px 0",
               cursor: "pointer",
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center"
+              alignItems: "center",
             }}
           >
             <span onClick={() => onSelect(h.city)}>
@@ -73,7 +72,7 @@ export default function HistoryList({
                 color: "#dc2626",
                 cursor: "pointer",
                 fontSize: "12px",
-                padding: "2px 6px"
+                padding: "2px 6px",
               }}
               title="Delete this item"
             >

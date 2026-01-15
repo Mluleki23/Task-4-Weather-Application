@@ -1,5 +1,4 @@
 // src/components/WeatherCard.tsx
-import React from "react";
 
 type Weather = {
   city: string;
