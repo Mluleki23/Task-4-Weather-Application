@@ -3,27 +3,6 @@ import { useEffect, useState } from "react";
 import SearchBar from "../components/SearchBar";
 import HistoryList from "../components/HistoryList";
 
-/* Notification component */
-function Notification({
-  message,
-  type = "info",
-  onClose,
-}: {
-  message: string;
-  type?: "success" | "error" | "info";
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3200);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  return (
-    <div className={`notification ${type === "error" ? "error" : ""}`}>
-      {message}
-    </div>
-  );
-}
-
 /* ---- helper conversions ---- */
 const cToF = (c: number) => Math.round((c * 9) / 5 + 32);
 const round = (n: number) => Math.round(n);
