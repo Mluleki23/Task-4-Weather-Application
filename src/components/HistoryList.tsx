@@ -1,26 +1,14 @@
 // src/components/HistoryList.tsx
 
-interface Item {
-  city: string;
-  country?: string;
-  tempC: number;
-  humidity?: number | null;
-}
-
 export default function HistoryList({
   items,
   onSelect,
   onClear,
-  onDelete,
-  unit = "celsius",
 }: {
-  items: Item[];
+  items: string[];
   onSelect: (city: string) => void;
   onClear: () => void;
-  onDelete: (index: number) => void;
-  unit?: "celsius" | "fahrenheit";
 }) {
-  const cToF = (c: number) => Math.round((c * 9) / 5 + 32);
   return (
     <div className="history">
       <div
@@ -54,30 +42,11 @@ export default function HistoryList({
             style={{
               padding: "6px 0",
               cursor: "pointer",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
             }}
           >
-            <span onClick={() => onSelect(h.city)}>
-              {h.city}
-              {h.country ? `, ${h.country}` : ""} —{" "}
-              {unit === "celsius" ? `${h.tempC}°C` : `${cToF(h.tempC)}°F`}
+            <span onClick={() => onSelect(h)}>
+              {h}
             </span>
-            <button
-              onClick={() => onDelete(idx)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#dc2626",
-                cursor: "pointer",
-                fontSize: "12px",
-                padding: "2px 6px",
-              }}
-              title="Delete this item"
-            >
-              ❌
-            </button>
           </li>
         ))}
       </ul>

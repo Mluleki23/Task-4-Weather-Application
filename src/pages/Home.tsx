@@ -24,7 +24,8 @@ export default function Home() {
   } | null>(null);
   const [weather, setWeather] = useState<HistoryItem | null>(null);
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [savedLocations, setSavedLocations] = useState<HistoryItem[]>([]);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [forecastType, setForecastType] = useState<"hourly" | "daily">("daily");
   const [hourly, setHourly] = useState<any[]>([]);
   const [daily, setDaily] = useState<any[]>([]);
@@ -32,10 +33,13 @@ export default function Home() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
-  /* Load history and geolocation on mount */
+  /* Load saved locations and search history on mount */
   useEffect(() => {
-    const stored = localStorage.getItem("weather-history");
-    if (stored) setHistory(JSON.parse(stored));
+    const storedSaved = localStorage.getItem("saved-locations");
+    if (storedSaved) setSavedLocations(JSON.parse(storedSaved));
+
+    const storedSearch = localStorage.getItem("search-history");
+    if (storedSearch) setSearchHistory(JSON.parse(storedSearch));
 
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
@@ -68,8 +72,7 @@ export default function Home() {
             });
           }
         },
-        (error) => {
-          console.error("Initial geolocation error:", error);
+        () => {
           setNotification({
             message: "Location access denied. Using demo location...",
             type: "info",
@@ -149,16 +152,27 @@ export default function Home() {
     }
   };
 
-  /* Save history helper */
-  const saveHistory = (entry: HistoryItem) => {
+  /* Add to search history helper */
+  const addToSearchHistory = (query: string) => {
+    const updated = [query, ...searchHistory.filter(s => s !== query)].slice(0, 10);
+    setSearchHistory(updated);
+    localStorage.setItem("search-history", JSON.stringify(updated));
+  };
+
+  /* Save location helper */
+  const saveLocation = (entry: HistoryItem) => {
     const updated = [
       entry,
-      ...history.filter(
+      ...savedLocations.filter(
         (h) => !(h.city === entry.city && h.country === entry.country)
       ),
     ].slice(0, 10);
-    setHistory(updated);
-    localStorage.setItem("weather-history", JSON.stringify(updated));
+    setSavedLocations(updated);
+    localStorage.setItem("saved-locations", JSON.stringify(updated));
+    setNotification({
+      message: `Location saved: ${entry.city}`,
+      type: "success",
+    });
   };
 
   /* Core fetch function (always request celsius and convert client-side) */
@@ -209,17 +223,25 @@ export default function Home() {
       // build forecasts in Celsius (store internal as Celsius)
       const hourlyArr: any[] = [];
       if (w.hourly && w.hourly.time) {
-        hourlyArr.push(
-          ...w.hourly.time.map((t: string, i: number) => ({
-            time: t,
-            tempC:
-              typeof w.hourly.temperature_2m[i] === "number"
-                ? round(w.hourly.temperature_2m[i])
-                : null,
-            humidity: w.hourly.relative_humidity_2m?.[i] ?? null,
-            wind: w.hourly.windspeed_10m?.[i] ?? null,
-          }))
-        );
+        const fullHourly = w.hourly.time.map((t: string, i: number) => ({
+          time: t,
+          tempC:
+            typeof w.hourly.temperature_2m[i] === "number"
+              ? round(w.hourly.temperature_2m[i])
+              : null,
+          humidity: w.hourly.relative_humidity_2m?.[i] ?? null,
+          wind: w.hourly.windspeed_10m?.[i] ?? null,
+        }));
+        // Find index of current time in location's timezone
+        const nowLocal = new Date(Date.now() + (w.utc_offset_seconds || 0) * 1000).toISOString().slice(0, 13) + ":00";
+        let startIdx = 0;
+        for (let i = 0; i < fullHourly.length; i++) {
+          if (fullHourly[i].time >= nowLocal) {
+            startIdx = i;
+            break;
+          }
+        }
+        hourlyArr.push(...fullHourly.slice(startIdx)); // start from current hour
       }
       const dailyArr: any[] = [];
       if (w.daily && w.daily.time) {
@@ -237,7 +259,6 @@ export default function Home() {
       setWeather(entry);
       setHourly(hourlyArr);
       setDaily(dailyArr);
-      saveHistory(entry);
       setNotification({
         message: `Weather for ${name} loaded`,
         type: "success",
@@ -273,6 +294,7 @@ export default function Home() {
         loc.name,
         loc.country
       );
+      addToSearchHistory(query);
     } catch (e: any) {
       setNotification({ message: e.message || "Search failed", type: "error" });
     } finally {
@@ -309,13 +331,13 @@ export default function Home() {
     handleSearch(city);
   };
 
-  /* Delete individual history item */
-  const handleDeleteHistory = (index: number) => {
-    const updated = history.filter((_, i) => i !== index);
-    setHistory(updated);
-    localStorage.setItem("weather-history", JSON.stringify(updated));
+  /* Delete individual saved location */
+  const handleDeleteSavedLocation = (index: number) => {
+    const updated = savedLocations.filter((_, i) => i !== index);
+    setSavedLocations(updated);
+    localStorage.setItem("saved-locations", JSON.stringify(updated));
     setNotification({
-      message: "History item deleted",
+      message: "Saved location deleted",
       type: "info",
     });
   };
@@ -451,6 +473,16 @@ export default function Home() {
                   </div>
                 </div>
 
+                <div style={{ marginTop: 14, textAlign: "center" }}>
+                  <button
+                    onClick={() => saveLocation(weather)}
+                    className="toggle-pill"
+                    style={{ marginBottom: 8 }}
+                  >
+                    Save Location
+                  </button>
+                </div>
+
                 <div className="tabs" style={{ marginTop: 14 }}>
                   <div
                     className={`tab ${
@@ -534,25 +566,40 @@ export default function Home() {
           <aside className="sidebar">
             <div style={{ fontWeight: 700 }}>Saved Locations</div>
 
-            {/* render saved (history) */}
-            {history.length === 0 && (
+            {/* render saved locations */}
+            {savedLocations.length === 0 && (
               <div style={{ color: "var(--muted)" }}>
                 No saved locations yet
               </div>
             )}
-            {history.map((h, idx) => (
-              <div key={idx} className="saved-card">
+            {savedLocations.map((h, idx) => (
+              <div key={idx} className="saved-card" onClick={() => handleSearch(h.city)} style={{ cursor: "pointer" }}>
                 <div>
                   <div className="city-small">{h.city}</div>
                   <div className="country-small">{h.country}</div>
                 </div>
-                <div style={{ textAlign: "right" }}>
+                <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                   <div className="temp-small">
                     {unit === "celsius" ? `${h.tempC}°C` : `${cToF(h.tempC)}°F`}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--muted)" }}>
                     {h.humidity ?? "-"}%
                   </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteSavedLocation(idx); }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#dc2626",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      padding: "2px 6px",
+                      marginTop: 4,
+                    }}
+                    title="Delete this saved location"
+                  >
+                    ❌
+                  </button>
                 </div>
               </div>
             ))}
@@ -571,14 +618,12 @@ export default function Home() {
             {/* History component (compact) */}
             <div style={{ marginTop: 12 }}>
               <HistoryList
-                items={history}
+                items={searchHistory}
                 onSelect={handleSelectHistory}
-                onDelete={handleDeleteHistory}
                 onClear={() => {
-                  localStorage.removeItem("weather-history");
-                  setHistory([]);
+                  localStorage.removeItem("search-history");
+                  setSearchHistory([]);
                 }}
-                unit={unit}
               />
             </div>
           </aside>
